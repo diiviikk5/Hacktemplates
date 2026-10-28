@@ -110,9 +110,10 @@
   let render = function () {
     const items = list.filter(t => active === 'all' || t.tags.includes(active));
     if (!items.length) { grid.innerHTML = '<p class="empty">Nothing here yet.</p>'; return; }
+    // the opaque thumb covers the poster, so an image poster would only fetch and decode a full-size scene nobody sees
     grid.innerHTML = items.map(t => `
       <div class="card" data-slug="${t.slug}">
-        <a href="templates/${t.slug}/${page}"><div class="frame" style="background:url(templates/${t.slug}/${page ? 'thumb_bg.jpg' : 'thumb.jpg'}) center/cover,${t.poster}"></div></a>
+        <a href="templates/${t.slug}/${page}"><div class="frame" style="background:url(templates/${t.slug}/${page ? 'thumb_bg.jpg' : 'thumb.jpg'}) center/cover${t.poster.startsWith('url(') ? '' : ',' + t.poster}"></div></a>
         <div class="meta"><h2>${t.name}</h2><span>${t.tags.join(' · ')}</span></div>
         <div class="alt"><button data-copy="hero">Copy hero</button><button data-copy="bg">Copy background</button><span class="sp"></span><a href="templates/${t.slug}/" target="_blank">Open ↗</a></div>
       </div>`).join('');
@@ -139,7 +140,14 @@
     live = { card, iframe };
   }
   function unmount() { if (live) { live.iframe.remove(); live = null; } }
-  grid.addEventListener('pointerover', e => { const c = e.target.closest('.card'); if (c && e.pointerType !== 'touch') mount(c); });
+  // Scrolling slides cards under a resting cursor, and the browser reports that as hover; booting a full
+  // template for each of them stalls the page, so only a cursor that actually moved starts a preview.
+  let pointer = null;
+  grid.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' || (pointer && pointer.x === e.clientX && pointer.y === e.clientY)) return;
+    pointer = { x: e.clientX, y: e.clientY };
+    const c = e.target.closest('.card'); if (c) mount(c);
+  });
   grid.addEventListener('pointerleave', unmount);
   grid.addEventListener('focusin', e => { const c = e.target.closest('.card'); if (c) mount(c); });
   // touch: first tap on a card plays it, second tap opens it
