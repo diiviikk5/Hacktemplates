@@ -140,11 +140,13 @@
   }
   function unmount() { if (live) { live.iframe.remove(); live = null; } }
   grid.addEventListener('pointerover', e => { const c = e.target.closest('.card'); if (c && e.pointerType !== 'touch') mount(c); });
-  grid.addEventListener('pointerleave', unmount);
-  grid.addEventListener('focusin', e => { const c = e.target.closest('.card'); if (c) mount(c); });
+  // a finger "leaves" on every lift, which would tear the preview down before the second tap can open the card
+  grid.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch') unmount(); });
+  // keyboard focus only: a tap also focuses the link, which would mount early and let that same tap navigate
+  grid.addEventListener('focusin', e => { const c = e.target.closest('.card'); if (c && e.target.matches(':focus-visible')) mount(c); });
   // touch: first tap on a card plays it, second tap opens it
   grid.addEventListener('click', e => {
-    const c = e.target.closest('.card'); if (!c || e.target.closest('button')) return;
+    const c = e.target.closest('.card'); if (!c || e.target.closest('button, [target=_blank]')) return;
     if (matchMedia('(hover: none)').matches && !(live && live.card === c)) { e.preventDefault(); mount(c); }
   });
   const _render = render; render = () => { unmount(); _render(); };
